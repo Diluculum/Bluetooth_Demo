@@ -12,17 +12,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.eightthreesix.catfisher.ui.theme.CatFisherTheme
 import com.eightthreesix.catfisher.utilities.BLUETOOTH_TAG
 import com.eightthreesix.catfisher.R
@@ -111,16 +119,22 @@ fun DeviceScan_Layout(context: Context){
 
 @Composable
 fun DeviceObject(image: Int, deviceName: String){
+    var upDirection by remember { mutableStateOf(true) }
+    val imageSource = when(upDirection){
+        true -> R.drawable.sharp_arrow_up_24
+        false -> R.drawable.sharp_arrow_down_24
+    }
     Card {
         Row {
             Icon(painter = painterResource(id = image), contentDescription = null)
+            Spacer(modifier = Modifier.size(10.dp))
             Text(text = deviceName)
-            Icon(painter = painterResource(id = R.drawable.sharp_arrow_up_24), contentDescription = null)
+            Spacer(modifier = Modifier.size(20.dp))
+            Icon(painter = painterResource(id = R.drawable.sharp_arrow_up_24), contentDescription = null,
+                modifier = Modifier.clickable(onClick = {upDirection = !upDirection}))
         }
     }
 }
-
-
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
