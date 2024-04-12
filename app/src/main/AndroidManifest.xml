@@ -23,11 +23,6 @@
         android:theme="@style/Theme.CatFisher"
         tools:targetApi="31">
         <activity
-            android:name=".ui.Components.Buttons"
-            android:exported="false"
-            android:label="@string/title_activity_buttons"
-            android:theme="@style/Theme.CatFisher" />
-        <activity
             android:name=".activities.DeviceScan_Activity"
             android:exported="true"
             android:label="@string/app_name"

@@ -1,0 +1,23 @@
+CREATE TABLE  IF NOT EXISTS Devices(
+    id INTEGER PRIMARY KEY,
+    devicename TEXT NOT NULL,
+    connectiontype INTEGER NOT NULL
+);
+
+selectAll:
+SELECT *
+FROM Devices
+;
+
+select:
+SELECT * FROM Devices WHERE connectiontype=?
+;
+
+insertDevice:
+INSERT INTO Devices(devicename,connectiontype)
+VALUES (?,?)
+;
+
+removeDevice:
+DELETE FROM Devices WHERE devicename=?
+;

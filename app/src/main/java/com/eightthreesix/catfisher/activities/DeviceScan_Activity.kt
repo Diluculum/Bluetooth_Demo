@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,9 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.cash.sqldelight.db.SqlDriver
 import com.eightthreesix.catfisher.ui.theme.CatFisherTheme
 import com.eightthreesix.catfisher.utilities.BLUETOOTH_TAG
 import com.eightthreesix.catfisher.R
+import com.eightthreesix.catfisher.db.BluetoothDB
 
 class DeviceScan_Activity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(RequestPermission()){ isGranted  ->
@@ -56,6 +59,7 @@ class DeviceScan_Activity : ComponentActivity() {
     private lateinit var btManager: BluetoothManager
     private lateinit var btAdapter: BluetoothAdapter
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,7 +75,7 @@ class DeviceScan_Activity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+                    // main compose here
                 }
             }
         }
@@ -110,11 +114,22 @@ class DeviceScan_Activity : ComponentActivity() {
     private fun btEnabled(): Boolean {
         return true.equals(btAdapter.isEnabled)
     }
+
+    data class BtEntry(
+        val name: String = "",
+        val type: Int = -1
+    )
+
+
 }
 
 @Composable
 fun DeviceScan_Layout(context: Context){
-
+    LazyColumn {
+//        items/*(TODO dataList of available devices)*/{device ->
+//            DeviceObject(image = device.image, deviceName = device.name)
+//        }
+    }
 }
 
 @Composable
@@ -130,18 +145,10 @@ fun DeviceObject(image: Int, deviceName: String){
             Spacer(modifier = Modifier.size(10.dp))
             Text(text = deviceName)
             Spacer(modifier = Modifier.size(20.dp))
-            Icon(painter = painterResource(id = R.drawable.sharp_arrow_up_24), contentDescription = null,
+            Icon(painter = painterResource(id = imageSource), contentDescription = null,
                 modifier = Modifier.clickable(onClick = {upDirection = !upDirection}))
         }
     }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
 }
 
 @Preview(showBackground = true)
