@@ -9,12 +9,16 @@ lifecycleRuntimeKtx = "2.7.0"
 activityCompose = "1.8.2"
 composeBom = "2024.04.00"
 sqldelight = "2.0.2"
+hilt = "2.51.1"
+ksp = "1.9.23-1.0.20"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 sqldelight-androiddriver = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight"}
 sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight"}
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt"}
+hilt-androidcompiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt"}
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -32,4 +36,6 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 sqldelightAndroid = { id = "app.cash.sqldelight", version.ref = "sqldelight"}
+hiltAndroid = { id = "com.google.dagger.hilt.android", version.ref = "hilt"}
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp"}
 

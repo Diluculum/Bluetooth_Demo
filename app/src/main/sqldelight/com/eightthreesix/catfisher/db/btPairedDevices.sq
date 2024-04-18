@@ -10,12 +10,19 @@ FROM Devices
 ;
 
 select:
-SELECT * FROM Devices WHERE connectiontype=?
+SELECT *
+FROM Devices
+WHERE connectiontype=?
 ;
 
 insertDevice:
 INSERT INTO Devices(devicename,connectiontype)
 VALUES (?,?)
+;
+
+insertByObject:
+INSERT INTO Devices(devicename,connectiontype)
+VALUES ?
 ;
 
 removeDevice:
