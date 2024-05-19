@@ -6,7 +6,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DeviceScan_VM @Inject constructor(
-    private val
+//    private val
 ): ViewModel() {
 
 }

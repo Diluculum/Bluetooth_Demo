@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.sqldelight.androiddriver)
     implementation(libs.sqldelight.coroutines)
     implementation(libs.hilt.android)
+    implementation(libs.accompanist.permissions)
     ksp(libs.hilt.androidcompiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

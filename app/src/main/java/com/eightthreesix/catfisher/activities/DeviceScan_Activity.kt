@@ -10,6 +10,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -17,10 +18,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.*
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -32,24 +41,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import androidx.core.content.ContextCompat
 import com.eightthreesix.catfisher.ui.theme.CatFisherTheme
 import com.eightthreesix.catfisher.utilities.BLUETOOTH_TAG
 import com.eightthreesix.catfisher.R
 import com.eightthreesix.catfisher.datastore.BTdevice_Container
-import com.eightthreesix.catfisher.db.BluetoothDB
-import com.eightthreesix.catfisher.receivers.BluetoothScanReceiver
+import com.eightthreesix.catfisher.utilities.BluetoothPermissionDialog
+import com.eightthreesix.catfisher.utilities.CheckBluetoothPermissions
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.rememberPermissionState
 
 class DeviceScan_Activity : ComponentActivity() {
+    val TAG: String = "DeviceScan_Activity"
 //    private val sqlDriver: SqlDriver = AndroidSqliteDriver(BluetoothDB.Schema, applicationContext, "btPairedDevices.db")
 //    private val queries = BluetoothDB(sqlDriver).btPairedDevicesQueries
-    private var btPermissionGranted = false
+    private var permissionRequests = 0
     private lateinit var btManager: BluetoothManager
     private lateinit var btAdapter: BluetoothAdapter
     private val deviceList_Paired: MutableList<BTdevice_Container> = emptyList<BTdevice_Container>().toMutableList()
@@ -58,58 +71,41 @@ class DeviceScan_Activity : ComponentActivity() {
         private var id: Int = 0
         @SuppressLint("MissingPermission")
         override fun onReceive(context: Context, intent: Intent){
-            if (!btPermissionGranted) return
+            if (!isPermissionsGranted(context)) return
             val action = intent.action
             when(action){
                 BluetoothDevice.ACTION_FOUND -> {
                     val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE,BluetoothDevice::class.java)
                     if (device == null) {Log.i(BLUETOOTH_TAG,"device is null"); return}
-                    val deviceName = device!!.name
+                    val deviceName = device.name
+                    var duplicate = false
                     Log.i(BLUETOOTH_TAG, "Found Device: $deviceName")
-                    deviceList_Scanned.add(BTdevice_Container(id = ++id, device = device))
+                    for (item in deviceList_Scanned){//TODO change to compare based on address
+                        if (item.device == device){
+                            duplicate = true
+                            Log.w(BLUETOOTH_TAG,"item is duplicate")
+                            break
+                        }
+                    }
+                    if (!duplicate){
+                        Log.i(BLUETOOTH_TAG,"adding to list")
+                        deviceList_Scanned.add(BTdevice_Container(id = ++id, device = device))
+                        Log.d(BLUETOOTH_TAG,"broadcastreceiver id = $id")
+                    }
+                }
+                BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
+                    Log.i(BLUETOOTH_TAG,"Discovery Started")
+                }
+                BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                    Log.i(BLUETOOTH_TAG,"Discovery Finished")
                 }
             }
-        }
-    }
-    private val permissionLauncher = registerForActivityResult(RequestPermission()){ isGranted  ->
-        if (isGranted){
-            btPermissionGranted = isGranted
-            onPermissionGranted()
-            Log.i(BLUETOOTH_TAG,"BT Permission Allowed")
-        }else{
-            // throw error message
-            Log.i(BLUETOOTH_TAG,"BT Permission Denied")
         }
     }
     @SuppressLint("MissingPermission")
-    private val startForResult = registerForActivityResult(StartActivityForResult()){ result: ActivityResult ->
-        if (result.resultCode == Activity.RESULT_OK){
-            //Permission granted -> Bluetooth ON
-            Log.i(BLUETOOTH_TAG,"BT Enabled")
-            var count = 0
-            if(btPermissionGranted){
-                while(!btAdapter.startDiscovery()){
-                    if (count++ > 3) break
-                }
-            }
-        }
-        if(result.resultCode == Activity.RESULT_CANCELED){
-            Log.i(BLUETOOTH_TAG,"BT Enable Cancelled")
-        }
-    }
-
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        btManager = getSystemService(BluetoothManager::class.java)
-        btAdapter = btManager.adapter
-
-        if (btAdapter == null) { /*kick out error and disable functions*/
-            Log.i(BLUETOOTH_TAG,"bt adapter null")}
-
-        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
-        registerReceiver(btscanreceiver, filter)
-
         setContent {
             CatFisherTheme {
                 // A surface container using the 'background' color from the theme
@@ -117,7 +113,32 @@ class DeviceScan_Activity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DeviceScan_Layout(context = this)
+                    var showBtPermissionDialog by rememberSaveable { mutableStateOf(false) }
+                    var rationaleTextState by rememberSaveable { mutableStateOf("") }
+                    var permissionState = rememberMultiplePermissionsState(
+                        listOf(
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                        )
+                    )
+                    CheckBluetoothPermissions(
+                        multiplePermissionsState = permissionState,
+                        onPermissionGranted = {
+                            showBtPermissionDialog = false
+                            btManager = getSystemService(BluetoothManager::class.java)
+                            btAdapter = btManager.adapter
+
+                            val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+                            registerReceiver(btscanreceiver, filter)
+                            btAdapter.startDiscovery()
+                            DeviceScan_Layout()
+                        },
+                        onPermissionDenied = {
+                            rationaleTextState = it
+                            showBtPermissionDialog = true
+                        })
+                    if(showBtPermissionDialog)
+                        BluetoothPermissionDialog(permissionState, permissionText = rationaleTextState)
                 }
             }
         }
@@ -125,7 +146,6 @@ class DeviceScan_Activity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
     }
 
     override fun onResume() {
@@ -136,68 +156,80 @@ class DeviceScan_Activity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
     }
-
+@SuppressLint("MissingPermission")
     override fun onStop() {
         super.onStop()
+        if (isPermissionsGranted(this))
+            btAdapter.cancelDiscovery()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(btscanreceiver)
+        revokeSelfPermissionsOnKill(mutableListOf(Manifest.permission.BLUETOOTH_SCAN,Manifest.permission.BLUETOOTH_CONNECT))
     }
 
-    private fun onPermissionGranted() {
-        if(btEnabled()){
-            startForResult.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-        }else{
-            Log.i(BLUETOOTH_TAG,"BT is Active")
-        }
-    }
-
-    private fun btEnabled(): Boolean {
-        return true.equals(btAdapter.isEnabled)
+    private fun isPermissionsGranted(context: Context): Boolean {
+        val btPermissionGranted = (
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+        )
+        return btPermissionGranted
     }
 
     @SuppressLint("MissingPermission")// Permission is checked at launch and program fails if != granted
-    private fun aquirePairedDevices(){
+    private fun acquirePairedDevices(){
         val pairedDevices = btAdapter.bondedDevices
         var count = 0
+        var duplicate = false
         for (device in pairedDevices!!.iterator()){
-            deviceList_Paired.add(BTdevice_Container(id = ++count, device = device))
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun scanForDevices() {
-        if (btPermissionGranted){
-            btAdapter.startDiscovery()
+            for (btdevice in deviceList_Paired){
+                if (btdevice.device == device) {
+                    duplicate = true
+                    break
+                }
+            }
+            if(!duplicate)
+                deviceList_Paired.add(BTdevice_Container(id = ++count, device = device))
         }
     }
 
     @Composable
-    fun ScannedDevices_Layout(){
+    fun DeviceScan_Layout(){
+        acquirePairedDevices()
         LazyColumn {
+            item {
+                DeviceSectionHeader(text = "Paired Devices", padding = 3)
+            }
+            items(deviceList_Paired, key = {it.id}) { device ->
+                device.alias?.let {
+                    Log.d(TAG,"(${deviceList_Paired.size}) deviceList_Paired key: ${device.id}  name: ${device.name}")
+                    Spacer(modifier = Modifier.height(2.dp))
+                    DeviceObject(device)
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+            }
+            item {
+                DeviceSectionHeader(text = "Scanned Devices", padding = 3)
+            }
             items(deviceList_Scanned, key = {it.id}) { device ->
-                device.alias?.let { DeviceObject(device) }
+                device.alias?.let {
+                    Log.d(TAG,"deviceList_Scanned key: ${device.id}")
+                    Spacer(modifier = Modifier.height(2.dp))
+                    DeviceObject(device)
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
             }
         }
-    }
-
-    @Composable
-    fun DeviceScan_Layout(context: Context){
-        aquirePairedDevices()
-        Text(text = "Paired Devices", modifier = Modifier.size(13.dp))
-        LazyColumn {//TODO arrangeable list of paired devices utilizing btPairedDevices.sq
-            items(deviceList_Paired, key = { it.id }){ device ->
-                device.alias?.let { DeviceObject(device) }
-            }
-        }
-        Spacer(modifier = Modifier.size(8.dp))
-        Text(text = "Scanned Devices", modifier = Modifier.size(13.dp))
-        ScannedDevices_Layout()
     }
 }
 
+@Composable
+fun DeviceSectionHeader(text: String, padding: Int){
+    Row (modifier = Modifier.padding(horizontal = 16.dp, vertical = padding.dp)){
+        Text(text = text, modifier = Modifier.fillMaxWidth())
+    }
+}
 
 @Composable
 fun DeviceObject(btDevice: BTdevice_Container){
@@ -206,14 +238,27 @@ fun DeviceObject(btDevice: BTdevice_Container){
         true -> R.drawable.sharp_arrow_up_24
         false -> R.drawable.sharp_arrow_down_24
     }
-    Card {
-        Row {
-            Icon(painter = painterResource(id = btDevice.image), contentDescription = null)
-            Spacer(modifier = Modifier.size(10.dp))
-            btDevice.alias?.let { Text(text = it) }
-            Spacer(modifier = Modifier.size(20.dp))
-            Icon(painter = painterResource(id = imageSource), contentDescription = null,
-                modifier = Modifier.clickable(onClick = {upDirection = !upDirection}))
+    Card (modifier = Modifier
+        .padding(5.dp)
+        .wrapContentHeight()
+        .fillMaxWidth()) {
+        Column (modifier = Modifier.requiredHeight(40.dp), Arrangement.Center){
+            Row (modifier = Modifier
+                .height(30.dp)
+                .fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Icon(painter = painterResource(id = btDevice.image), contentDescription = null)
+                    Spacer(modifier = Modifier.size(10.dp))
+                    btDevice.alias?.let { Text(text = it) }
+//                    Spacer(modifier = Modifier.size(20.dp))
+                }
+                Row {
+                    Icon(painter = painterResource(id = imageSource), contentDescription = null,
+                        modifier = Modifier.clickable(onClick = {upDirection = !upDirection}))
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+            }
         }
     }
 }
