@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Card
@@ -26,6 +27,12 @@ import androidx.compose.ui.unit.sp
 import com.eightthreesix.catfisher.R
 import com.eightthreesix.catfisher.datastore.BTdevice_Container
 
+@Composable
+fun DeviceSectionHeader(text: String, padding: Int){
+    Row (modifier = Modifier.padding(horizontal = 16.dp, vertical = padding.dp)){
+        Text(text = text, modifier = Modifier.fillMaxWidth())
+    }
+}
 
 @Composable
 fun DeviceObject(btDevice: BTdevice_Container){
@@ -41,7 +48,7 @@ fun DeviceObject(btDevice: BTdevice_Container){
         val objectHeight = 60.dp
         Column (modifier = Modifier.requiredHeight(objectHeight), Arrangement.Center){
             Row (modifier = Modifier
-                .height(objectHeight/2)
+                .height(objectHeight / 2)
                 .fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row {
                     Spacer(modifier = Modifier.width(16.dp))
@@ -59,10 +66,33 @@ fun DeviceObject(btDevice: BTdevice_Container){
     }
 }
 
+@Composable
+fun DeviceOptions(){
+    val objectHeight = 60.dp
+    Card(modifier = Modifier
+        .fillMaxWidth()
+    ) {
+        Column (
+            modifier = Modifier.requiredHeight(objectHeight), Arrangement.Center
+        ) {
+            Row {
+                functionIcon(name = "Unpair", image = R.drawable.sharp_unpair_24) {
+
+                }
+                functionIcon(name = "Disconnect", image = R.drawable.bluetooth_disabled_24) {
+
+                }
+            }
+        }
+    }
+}
 
 @Composable
-fun DeviceSectionHeader(text: String, padding: Int){
-    Row (modifier = Modifier.padding(horizontal = 16.dp, vertical = padding.dp)){
-        Text(text = text, modifier = Modifier.fillMaxWidth())
+fun functionIcon(name: String, image: Int, onClick: () -> Unit){
+    Column {
+        Icon(painter = painterResource(id = image), contentDescription = null, modifier = Modifier.clickable {
+            onClick
+        })
+        Text(text = name, modifier = Modifier.size(11.dp))
     }
 }
